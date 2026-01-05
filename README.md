@@ -143,3 +143,61 @@ python src/main.py --output_dir experiments --comment "finetune for regression" 
 ```bash
 python src/main.py --output_dir experiments --comment "finetune for classification" --name SpokenArabicDigits_finetuned --records_file Classification_records.xls --data_dir /path/to/Datasets/Classification/SpokenArabicDigits/ --data_class tsra --pattern TRAIN --val_pattern TEST --epochs 100 --lr 0.001 --optimizer RAdam --batch_size 128 --pos_encoding learnable --d_model 64 --load_model path/to/SpokenArabicDigits_pretrained/checkpoints/model_best.pth --task classification --change_output --key_metric accuracy
 ```
+
+
+# Reproducibility Details
+
+This repository accompanies the paper:
+
+> **Anomaly detection using case-based reasoning and representation learning: Application to industrial maintenance**  
+> Meesam Naqvi et al., 2026
+
+---
+
+## Case Study 1: Gearbox Anomaly Detection (Public Dataset)
+
+Here are the instructions to reproduce the gearbox experiments using the **NREL/Spectra Quest Gearbox Fault Diagnosis dataset** [link](https://data.openei.org/submissions/623).
+
+### **Step-by-Step Process**
+
+1. **Download Dataset**
+   - Obtain vibration signals from four sensors (A1–A4) recorded at **30 Hz** under load conditions from 0% to 90%.
+   - Data includes healthy and broken tooth conditions.
+
+2. **Preprocessing**
+   - Segment raw signals into **windows of 30, 60, 90, or 120 seconds** (best model uses 30 s).
+   - No overlap was used in the paper; however, overlap can be configured if desired.
+
+3. **Training**
+   - Use **unsupervised domain pretraining** with masking strategy:
+     - Masking ratio `r = 0.15`, masked segment length ≈ 3.
+     - Objective: predict masked values using context (MSE loss).
+   - Train for **50 epochs**; best model typically converges within 8–10 epochs.
+   - Embedding dimensions tested: 64, 128, 256, 512, 1024 (best = 512).
+
+4. **Embedding Extraction**
+   - Extract fixed-length embeddings from the encoder before task-specific heads.
+   - Store embeddings for healthy windows as **reference case base**.
+
+5. **Similarity Matching & Detection**
+   - Compute **cosine similarity** between test embeddings and reference embeddings.
+   - Apply **threshold = 0.9**:
+     - Similarity ≥ 0.9 → Healthy
+     - Similarity < 0.9 → Anomalous
+   - Perform **load-aware matching**: compare test samples only with reference embeddings from the same load condition.
+
+6. **Evaluation**
+   - Metrics: Precision, Recall, F1, MCC, Accuracy.
+   - Generate ROC curves, threshold-sensitivity plots, and similarity score distributions.
+   - Best model achieved **99.17% accuracy** across loads.
+
+---
+
+## Case Study 2: Private Industrial System D
+
+The second case study uses proprietary data from an industrial system (System D).  
+Due to confidentiality, raw data cannot be shared. However:
+- The same pipeline applies (cycle segmentation, normalization, unsupervised pretraining, embedding extraction, similarity-based anomaly detection).
+- Results in the paper include early-warning analysis (lead times, anomaly streaks, FAR) validated against maintenance logs.
+
+---
